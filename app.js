@@ -452,6 +452,31 @@ function pickDefaultEvent(selectEl) {
   }
 }
 
+function getUrlPreset() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("preset") === "parkrun") return "parkrun";
+  return null;
+}
+
+function setPickToYear(year) {
+  const manifest = state.manifest;
+  if (!manifest?.sets?.length) return false;
+
+  const idx = manifest.sets.findIndex(s => String(s.year) === String(year) || String(s.label).includes(String(year)));
+  if (idx < 0) return false;
+
+  el("setPick").value = String(idx);
+  return true;
+}
+
+function setEventIfExists(eventName) {
+  const pick = el("eventPick");
+  const opt = Array.from(pick.options).find(o => o.value === eventName);
+  if (!opt) return false;
+  pick.value = eventName;
+  return true;
+}
+
 /**
  * Populates the Distance/Event list from the selected standards set
  */
@@ -679,15 +704,23 @@ function wire() {
 }
 
 (async function init() {
-  try {
-    await loadManifest();
-    await refreshSetPick();
-    await refreshEvents();
-    wire();
+  await loadManifest();
+  await refreshSetPick();
 
-    setActiveTarget(null);
-    scheduleRun(0);
-  } catch {
-    showLoadError();
+  const preset = getUrlPreset();
+
+  // Apply preset that changes defaults (but only when URL asks for it)
+  if (preset === "parkrun") {
+    setPickToYear(2010);
   }
+
+  await refreshEvents();
+
+  if (preset === "parkrun") {
+    setEventIfExists("5 km");
+  }
+
+  wire();
+  setActiveTarget(null);
+  scheduleRun(0);
 })();
