@@ -4,7 +4,7 @@ Web-based tool to calculate an Age Grade and Age Grade-equivelant times given a 
   Live at:  https://dcwelch.io/age-grade
 
 ## Data source
-Age grading standards are derived from the Age Grade Tables published by Alan Lytton Jones and adopted by WMA:
+Age grading standards are derived from the Age Grade tables published by Alan Lytton Jones and adopted by WMA:
 
   https://github.com/AlanLyttonJones/Age-Grade-Tables
 
