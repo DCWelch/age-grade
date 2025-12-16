@@ -300,3 +300,135 @@ thead th {
 tbody tr:nth-child(even) td {
   background: var(--rowAlt);
 }
+
+/* ---- Title + info button ----------------------------------------------- */
+
+.titleRow {
+  position: relative;
+  text-align: center;
+  margin-top: 7px;
+}
+
+.titleText {
+  display: inline-block;
+}
+
+.infoBtn {
+  position: absolute;
+  margin-left: 8px;
+  transform: translateY(-50%);
+  top: 50%;
+
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 35px;
+  line-height: 1;
+}
+
+.infoBtn:hover {
+  color: var(--text);
+}
+
+.infoBtn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---- Info modal + frosted overlay -------------------------------------- */
+
+.infoOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: rgba(10, 12, 18, 0.55);
+  backdrop-filter: blur(6px);
+}
+.infoOverlay[hidden] {
+  display: none;
+}
+.infoOverlay {
+  display: none;
+}
+.infoOverlay:not([hidden]) {
+  display: flex;
+}
+
+.infoModal {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  padding: 20px 22px;
+
+  max-width: 520px;
+  width: calc(100% - 32px);
+
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+  position: relative;
+}
+
+.infoModal h2 {
+  margin-top: 0;
+}
+
+.infoModal p {
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.infoLinks {
+  margin: 14px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.infoLinkLabel {
+  color: var(--muted);
+  line-height: 1.5;
+  margin: 10px 0 6px;
+}
+
+.infoLinkItem {
+  margin: 0 0 6px;
+  padding-left: 18px;
+}
+
+.infoLinkItem a {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.infoLinkItem a:hover {
+  text-decoration: underline;
+}
+
+.infoNote {
+  font-size: 14px;
+  color: var(--muted);
+  margin-top: 12px;
+}
+
+.infoClose {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 26px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.infoClose:hover {
+  color: var(--text);
+}

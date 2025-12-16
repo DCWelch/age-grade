@@ -13,9 +13,18 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header class="wrap">
-    <h1>Age Grade Converter</h1>
-  </header>
+  <h1 class="titleRow">
+    <span class="titleText">Age Grade Converter</span>
+    <button
+      class="infoBtn"
+      id="infoBtn"
+      aria-label="About this tool"
+      title="About this tool"
+      type="button"
+    >
+      ⓘ
+    </button>
+  </h1>
 
   <main class="wrap grid">
     <!-- Input -->
@@ -130,7 +139,48 @@
       <div id="results"></div>
     </section>
   </main>
-
+  
+  <!-- Info Modal -->
+  <div class="infoOverlay" id="infoOverlay" hidden>
+    <div class="infoModal" role="dialog" aria-modal="true" aria-labelledby="infoTitle">
+      <button class="infoClose" id="infoClose" aria-label="Close">×</button>
+  
+      <h2 id="infoTitle">About this tool</h2>
+  
+      <p>
+        DCWelch's Age Grade Converter is a web-based tool to calculate an Age Grade and Age Grade-equivelant road running times given a distance, time, age, and gender.
+      </p>
+  
+      <p>
+        The underlying calculations are based on Alan Lytton Jones' Age Grade standards (adopted by WMA).
+      </p>
+	  
+	  <p>
+	    Note that Alan maintains standards for both road running and track running. This tool uses only the road running standards.
+      </p>
+	  
+	  <p>
+	    Also note that parkrun uses the 2010 standards.
+      </p>
+	  
+      <ul class="infoLinks">
+        <li class="infoLinkLabel">View this project on GitHub:</li>
+        <li class="infoLinkItem">
+          <a href="https://github.com/dcwelch/age-grade" target="_blank" rel="noopener">
+            https://github.com/DCWelch/age-grade
+          </a>
+        </li>
+      
+        <li class="infoLinkLabel">View Alan's Age Grade tables:</li>
+        <li class="infoLinkItem">
+          <a href="https://github.com/AlanLyttonJones/Age-Grade-Tables" target="_blank" rel="noopener">
+            https://github.com/AlanLyttonJones/Age-Grade-Tables
+          </a>
+        </li>
+      </ul>
+    </div>
+  </div>
+  
   <script src="app.js" defer></script>
 </body>
 </html>

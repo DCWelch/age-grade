@@ -708,6 +708,39 @@ function wire() {
   dom.customAge.addEventListener("input", () => scheduleRun(0));
 }
 
+(function wireInfoModal() {
+  const btn = document.getElementById("infoBtn");
+  const overlay = document.getElementById("infoOverlay");
+  const close = document.getElementById("infoClose");
+
+  if (!btn || !overlay || !close) return;
+
+  function open() {
+    overlay.hidden = false;
+    close.focus();
+  }
+
+  function closeModal() {
+    overlay.hidden = true;
+    btn.focus();
+  }
+
+  btn.addEventListener("click", open);
+  close.addEventListener("click", closeModal);
+
+  // Click outside modal closes it
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) closeModal();
+  });
+
+  // ESC key closes it
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !overlay.hidden) {
+      closeModal();
+    }
+  });
+})();
+
 (async function init() {
   await loadManifest();
   await refreshSetPick();
