@@ -1,144 +1,164 @@
-const el = (id) => document.getElementById(id);
+/**
+ * Age Grade Converter (client-side)
+ *
+ * Uses transformed JSON road standards derived from:
+ * https://github.com/AlanLyttonJones/Age-Grade-Tables (CC0-1.0)
+ *
+ * This script:
+ *  - Loads a local manifest.json which points to the JSON standards files
+ *  - Computes an Age Grade % for the selected event/time/age/sex
+ *  - Generates equivalent performance tables for selected targets
+ */
 
-const state = {
-  manifest: null,
-  cache: new Map(),      // `${year}_${sex}` -> json
-  peakCache: new Map(),  // `${year}_${sex}` -> { [event]: minSeconds }
-  runTimer: null,
-  activeTarget: null     // null | "peakM" | "peakF" | "ageM" | "ageF" | "custom"
+"use strict";
+
+const CONFIG = {
+  MANIFEST_URL: "age_grade_standards/manifest.json",
+  TIME_INPUT_DEBOUNCE_MS: 120,
+  AGE_MIN: 5,
+  AGE_MAX: 110,
+  DEFAULT_MESSAGE: "Enter a valid time to calculate.",
+  LOAD_ERROR_MESSAGE:
+    "Couldn’t load the standards data. Please refresh, or check that the site is deployed correctly.",
 };
 
-function parseTimeToSeconds(s) {
-  s = String(s).trim();
-  if (!s) return NaN;
-  const parts = s.split(":").map(x => x.trim());
-  if (parts.length === 2) return (Number(parts[0]) * 60) + Number(parts[1]);
-  if (parts.length === 3) return (Number(parts[0]) * 3600) + (Number(parts[1]) * 60) + Number(parts[2]);
-  return NaN;
-}
+const $ = (id) => document.getElementById(id);
 
-function secondsToTime(sec) {
-  if (!isFinite(sec) || sec <= 0) return "—";
-  const s = Math.round(sec);
-  const hh = Math.floor(s / 3600);
-  const mm = Math.floor((s % 3600) / 60);
-  const ss = (s % 60);
-  const ssStr = String(ss).padStart(2, "0");
-  const mmStr = hh > 0 ? String(mm).padStart(2, "0") : String(mm);
-  return hh > 0 ? `${hh}:${mmStr}:${ssStr}` : `${mmStr}:${ssStr}`;
-}
+/** Cached DOM references */
+const dom = {
+  setPick: $("setPick"),
+  sexPick: $("sexPick"),
+  agePick: $("agePick"),
+  eventPick: $("eventPick"),
+  timePick: $("timePick"),
 
-function formatInputTime(raw) {
-  const sec = parseTimeToSeconds(raw);
-  if (!isFinite(sec) || sec <= 0) return "—";
-  return secondsToTime(sec);
-}
+  ageLabelM: $("ageLabelM"),
+  ageLabelF: $("ageLabelF"),
 
-async function loadManifest() {
-  if (state.manifest) return state.manifest;
-  const res = await fetch("age_grade_standards/manifest.json");
-  if (!res.ok) throw new Error("Failed to load age_grade_standards/manifest.json");
-  state.manifest = await res.json();
-  return state.manifest;
-}
+  ageGradeOut: $("ageGradeOut"),
+  ageGradeNote: $("ageGradeNote"),
 
-function getSelectedSetEntry() {
-  const idx = Number(el("setPick").value);
-  const entry = state.manifest?.sets?.[idx];
-  if (!entry) throw new Error("Selected standards set not found in manifest");
-  return entry;
-}
+  otherGenderLabel: $("otherGenderLabel"),
+  otherGenderTime: $("otherGenderTime"),
+  peakTimeLabel: $("peakTimeLabel"),
+  peakTime: $("peakTime"),
+  peakOtherGenderLabel: $("peakOtherGenderLabel"),
+  peakOtherGenderTime: $("peakOtherGenderTime"),
 
-async function loadStandards(entry, sex) {
-  const sexKey = sex === "M" ? "male" : "female";
-  const url = `${entry.base}/${entry[sexKey]}`;
-  const cacheKey = `${entry.year}_${sex}`;
+  results: $("results"),
 
-  if (state.cache.has(cacheKey)) return state.cache.get(cacheKey);
+  customRow: $("customRow"),
+  customSex: $("customSex"),
+  customAge: $("customAge"),
 
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to load ${url}`);
-  const json = await res.json();
-  state.cache.set(cacheKey, json);
-  return json;
-}
+  targetsDivider: document.querySelector(".targetsDivider"),
+  targetButtons: Array.from(document.querySelectorAll(".targetBtn")),
+};
 
-function getTable(json) {
-  if (json.AgeStdSec?.standards_seconds) return json.AgeStdSec;
-  if (json.AgeStdHMS?.standards_seconds) return json.AgeStdHMS;
-  throw new Error("No usable standards table found in JSON");
-}
+const state = {
+  /** Manifest object loaded from CONFIG.MANIFEST_URL */
+  manifest: null,
+  /** Standards JSON cache: `${year}_${sex}` -> json */
+  standardsCache: new Map(),
+  /** Peak cache: `${year}_${sex}` -> { [event]: minSeconds|null } */
+  peakCache: new Map(),
+  runTimer: null,
+  /** null | "peakM" | "peakF" | "ageM" | "ageF" | "custom" */
+  activeTarget: null,
+};
 
-function getStandardSeconds(table, event, age) {
-  const m = table.standards_seconds?.[event];
-  if (!m) return null;
-  return m[String(age)] ?? null;
-}
+/* -------------------------------------------------------------------------- */
+/*                                UI Utilities                                */
+/* -------------------------------------------------------------------------- */
 
-function computePeak(table) {
-  const peak = {};
-  for (const event of table.events) {
-    let best = Infinity;
-    const m = table.standards_seconds[event];
-    for (const a of Object.keys(m)) {
-      const v = m[a];
-      if (typeof v === "number" && v > 0 && v < best) best = v;
-    }
-    peak[event] = isFinite(best) ? best : null;
-  }
-  return peak;
-}
-
-function getPeak(cacheKey, table) {
-  if (!state.peakCache.has(cacheKey)) state.peakCache.set(cacheKey, computePeak(table));
-  return state.peakCache.get(cacheKey);
-}
-
-function sexLabel(sex) { return sex === "M" ? "Male" : "Female"; }
-function otherSex(sex) { return sex === "M" ? "F" : "M"; }
-
-function scheduleRun(delayMs = 0) {
-  if (state.runTimer) clearTimeout(state.runTimer);
-  state.runTimer = setTimeout(runLive, delayMs);
-}
-
-function clampAge(n) {
-  if (!Number.isFinite(n)) return null;
-  if (n < 5) return 5;
-  if (n > 110) return 110;
-  return Math.round(n);
-}
-
-function getAge() {
-  const raw = String(el("agePick").value || "").trim();
-  const n = Number(raw);
-  return clampAge(n);
-}
-
-function updateAgeButtons() {
-  const age = String(el("agePick").value || "").trim() || "—";
-  el("ageLabelM").textContent = age;
-  el("ageLabelF").textContent = age;
-}
-
-function setAgeGradeUI({ gradePct, note, sex, event, otherGenderTime, peakSameTime, peakOtherTime }) {
+/**
+ * Updates the Age Grade section (top-level value + note + 3 equivalent lines)
+ * @param {object} args
+ */
+function setAgeGradeUI({
+  gradePct = "—",
+  note = "",
+  sex,
+  event,
+  otherGenderTime = "—",
+  peakSameTime = "—",
+  peakOtherTime = "—",
+}) {
   const sLabel = sexLabel(sex);
   const oLabel = sexLabel(otherSex(sex));
   const ev = event ? ` ${event}` : "";
 
-  el("ageGradeOut").textContent = gradePct ?? "—";
-  el("ageGradeNote").textContent = note ?? "";
+  dom.ageGradeOut.textContent = gradePct;
+  dom.ageGradeNote.textContent = note;
 
-  el("otherGenderLabel").textContent = `Equivalent ${oLabel}${ev} Time`;
-  el("peakTimeLabel").textContent = `Equivalent Peak Age ${sLabel}${ev} Time`;
-  el("peakOtherGenderLabel").textContent = `Equivalent Peak Age ${oLabel}${ev} Time`;
+  dom.otherGenderLabel.textContent = `Equivalent ${oLabel}${ev} Time`;
+  dom.peakTimeLabel.textContent = `Equivalent Peak Age ${sLabel}${ev} Time`;
+  dom.peakOtherGenderLabel.textContent = `Equivalent Peak Age ${oLabel}${ev} Time`;
 
-  el("otherGenderTime").textContent = otherGenderTime ?? "—";
-  el("peakTime").textContent = peakSameTime ?? "—";
-  el("peakOtherGenderTime").textContent = peakOtherTime ?? "—";
+  dom.otherGenderTime.textContent = otherGenderTime;
+  dom.peakTime.textContent = peakSameTime;
+  dom.peakOtherGenderTime.textContent = peakOtherTime;
 }
 
-function section(title, rows) {
+/**
+ * Shows friendly error message in the Age Grade note (and clears results)
+ * @param {string} msg
+ */
+function showLoadError(msg = CONFIG.LOAD_ERROR_MESSAGE) {
+  const sex = dom.sexPick?.value || "M";
+  const event = dom.eventPick?.value || "";
+  setAgeGradeUI({
+    sex,
+    event,
+    gradePct: "—",
+    note: msg,
+    otherGenderTime: "—",
+    peakSameTime: "—",
+    peakOtherTime: "—",
+  });
+  if (dom.results) dom.results.innerHTML = "";
+}
+
+/**
+ * Updates the Age placeholders in the target button labels
+ */
+function updateAgeButtons() {
+  const age = String(dom.agePick.value ?? "").trim() || "—";
+  if (dom.ageLabelM) dom.ageLabelM.textContent = age;
+  if (dom.ageLabelF) dom.ageLabelF.textContent = age;
+}
+
+/**
+ * Sets which target is active (only one at a time; clicking again disables)
+ * Also controls custom target row visibility and divider visibility
+ * @param {string|null} targetOrNull
+ */
+function setActiveTarget(targetOrNull) {
+  state.activeTarget = targetOrNull;
+
+  for (const btn of dom.targetButtons) {
+    const t = btn.dataset.target;
+    const active = t === state.activeTarget;
+    btn.classList.toggle("is-active", active);
+    btn.setAttribute("aria-pressed", active ? "true" : "false");
+  }
+
+  if (dom.customRow) dom.customRow.hidden = state.activeTarget !== "custom";
+  if (dom.targetsDivider) {
+    dom.targetsDivider.style.display = state.activeTarget ? "block" : "none";
+  }
+
+  if (!state.activeTarget && dom.results) dom.results.innerHTML = "";
+  scheduleRun(0);
+}
+
+/**
+ * Creates a results section with a header and a two-column table
+ * @param {string} title
+ * @param {{event: string, time: string}[]} rows
+ * @returns {HTMLDivElement}
+ */
+function buildSection(title, rows) {
   const div = document.createElement("div");
   div.className = "resultSection";
 
@@ -151,20 +171,18 @@ function section(title, rows) {
 
   const table = document.createElement("table");
 
-  // ✅ header row
   const thead = document.createElement("thead");
-  const hr = document.createElement("tr");
+  const trh = document.createElement("tr");
   const th1 = document.createElement("th");
   const th2 = document.createElement("th");
   th1.textContent = "Distance / Event";
   th2.textContent = "Equivalent Time";
-  hr.appendChild(th1);
-  hr.appendChild(th2);
-  thead.appendChild(hr);
+  trh.appendChild(th1);
+  trh.appendChild(th2);
+  thead.appendChild(trh);
   table.appendChild(thead);
 
-  const tb = document.createElement("tbody");
-
+  const tbody = document.createElement("tbody");
   for (const r of rows) {
     const tr = document.createElement("tr");
     const td1 = document.createElement("td");
@@ -173,101 +191,313 @@ function section(title, rows) {
     td2.textContent = r.time;
     tr.appendChild(td1);
     tr.appendChild(td2);
-    tb.appendChild(tr);
+    tbody.appendChild(tr);
   }
+  table.appendChild(tbody);
 
-  table.appendChild(tb);
   wrap.appendChild(table);
   div.appendChild(wrap);
 
   return div;
 }
 
-function setActiveTarget(targetOrNull) {
-  state.activeTarget = targetOrNull;
+/* -------------------------------------------------------------------------- */
+/*                              Formatting Helpers                             */
+/* -------------------------------------------------------------------------- */
 
-  document.querySelectorAll(".targetBtn").forEach(btn => {
-    const t = btn.dataset.target;
-    btn.classList.toggle("is-active", t === state.activeTarget);
-    btn.setAttribute("aria-pressed", t === state.activeTarget ? "true" : "false");
-  });
+/**
+ * Parse "mm:ss" or "hh:mm:ss" into seconds
+ * Returns NaN for invalid input
+ * @param {string} raw
+ * @returns {number}
+ */
+function parseTimeToSeconds(raw) {
+  const s = String(raw ?? "").trim();
+  if (!s) return NaN;
 
-  el("customRow").hidden = (state.activeTarget !== "custom");
+  const parts = s.split(":").map((x) => x.trim());
+  if (parts.some((p) => p === "" || Number.isNaN(Number(p)))) return NaN;
 
-  /* ✅ show divider only when a target is active */
-  const divider = document.querySelector(".targetsDivider");
-  if (divider) {
-    divider.style.display = state.activeTarget ? "block" : "none";
+  if (parts.length === 2) {
+    const [mm, ss] = parts.map(Number);
+    return mm * 60 + ss;
   }
 
-  if (!state.activeTarget) el("results").innerHTML = "";
-  scheduleRun(0);
+  if (parts.length === 3) {
+    const [hh, mm, ss] = parts.map(Number);
+    return hh * 3600 + mm * 60 + ss;
+  }
+
+  return NaN;
 }
 
+/**
+ * Format seconds to "m:ss" or "h:mm:ss"
+ * @param {number} seconds
+ * @returns {string}
+ */
+function secondsToTime(seconds) {
+  if (!Number.isFinite(seconds) || seconds <= 0) return "—";
+
+  const s = Math.round(seconds);
+  const hh = Math.floor(s / 3600);
+  const mm = Math.floor((s % 3600) / 60);
+  const ss = s % 60;
+
+  const ssStr = String(ss).padStart(2, "0");
+  const mmStr = hh > 0 ? String(mm).padStart(2, "0") : String(mm);
+
+  return hh > 0 ? `${hh}:${mmStr}:${ssStr}` : `${mmStr}:${ssStr}`;
+}
+
+/**
+ * Formats the user input time as a friendly display time
+ * @param {string} raw
+ * @returns {string}
+ */
+function formatInputTime(raw) {
+  const sec = parseTimeToSeconds(raw);
+  return Number.isFinite(sec) && sec > 0 ? secondsToTime(sec) : "—";
+}
+
+function sexLabel(sex) {
+  return sex === "M" ? "Male" : "Female";
+}
+
+function otherSex(sex) {
+  return sex === "M" ? "F" : "M";
+}
+
+/**
+ * Clamp age to the configured range. Returns null for invalid input
+ * @param {number} n
+ * @returns {number|null}
+ */
+function clampAge(n) {
+  if (!Number.isFinite(n)) return null;
+  if (n < CONFIG.AGE_MIN) return CONFIG.AGE_MIN;
+  if (n > CONFIG.AGE_MAX) return CONFIG.AGE_MAX;
+  return Math.round(n);
+}
+
+/**
+ * Reads and clamps the age from the UI
+ * @returns {number|null}
+ */
+function getAge() {
+  const n = Number(String(dom.agePick.value ?? "").trim());
+  return clampAge(n);
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                Data Loading                                */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Loads the standards manifest
+ * @returns {Promise<any>}
+ */
+async function loadManifest() {
+  if (state.manifest) return state.manifest;
+
+  const res = await fetch(CONFIG.MANIFEST_URL);
+  if (!res.ok) throw new Error(`Failed to load manifest: ${CONFIG.MANIFEST_URL}`);
+
+  state.manifest = await res.json();
+  return state.manifest;
+}
+
+/**
+ * Gets the currently selected standards set entry from the manifest
+ * @returns {any}
+ */
+function getSelectedSetEntry() {
+  const idx = Number(dom.setPick.value);
+  const entry = state.manifest?.sets?.[idx];
+  if (!entry) throw new Error("Selected standards set not found in manifest");
+  return entry;
+}
+
+/**
+ * Loads a standards JSON
+ * @param {any} entry
+ * @param {"M"|"F"} sex
+ * @returns {Promise<any>}
+ */
+async function loadStandards(entry, sex) {
+  const sexKey = sex === "M" ? "male" : "female";
+  const url = `${entry.base}/${entry[sexKey]}`;
+  const cacheKey = `${entry.year}_${sex}`;
+
+  if (state.standardsCache.has(cacheKey)) {
+    return state.standardsCache.get(cacheKey);
+  }
+
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to load ${url}`);
+
+  const json = await res.json();
+  state.standardsCache.set(cacheKey, json);
+  return json;
+}
+
+/**
+ * Selects the usable standards table from a JSON payload
+ * @param {any} json
+ * @returns {{events: string[], standards_seconds: Record<string, Record<string, number|null>>}}
+ */
+function getTable(json) {
+  if (json?.AgeStdSec?.standards_seconds) return json.AgeStdSec;
+  if (json?.AgeStdHMS?.standards_seconds) return json.AgeStdHMS;
+  throw new Error("No usable standards table found in JSON");
+}
+
+/**
+ * Returns the standard seconds for a given event and age
+ * @param {any} table
+ * @param {string} event
+ * @param {number} age
+ * @returns {number|null}
+ */
+function getStandardSeconds(table, event, age) {
+  const map = table?.standards_seconds?.[event];
+  if (!map) return null;
+  return map[String(age)] ?? null;
+}
+
+/* -------------------------------------------------------------------------- */
+/*                              Peak Calculations                              */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Computes "peak age" (factor of 1.000 / fastest standard) per event in a standards table
+ * @param {any} table
+ * @returns {Record<string, number|null>}
+ */
+function computePeak(table) {
+  const peak = {};
+  for (const event of table.events) {
+    let best = Infinity;
+    const m = table.standards_seconds[event];
+
+    for (const a of Object.keys(m)) {
+      const v = m[a];
+      if (typeof v === "number" && v > 0 && v < best) best = v;
+    }
+
+    peak[event] = Number.isFinite(best) ? best : null;
+  }
+  return peak;
+}
+
+/**
+ * Gets peak cache for a set/sex key
+ * @param {string} cacheKey
+ * @param {any} table
+ * @returns {Record<string, number|null>}
+ */
+function getPeak(cacheKey, table) {
+  if (!state.peakCache.has(cacheKey)) {
+    state.peakCache.set(cacheKey, computePeak(table));
+  }
+  return state.peakCache.get(cacheKey);
+}
+
+/* -------------------------------------------------------------------------- */
+/*                             UI Refresh Helpers                              */
+/* -------------------------------------------------------------------------- */
+
+function scheduleRun(delayMs = 0) {
+  if (state.runTimer) clearTimeout(state.runTimer);
+  state.runTimer = setTimeout(runLive, delayMs);
+}
+
+/**
+ * Populates the WMA Standards select from the manifest
+ */
 async function refreshSetPick() {
   const manifest = await loadManifest();
-  const pick = el("setPick");
-  pick.innerHTML = "";
+  dom.setPick.innerHTML = "";
 
-  manifest.sets.forEach((entry, i) => {
+  for (const [i, entry] of manifest.sets.entries()) {
     const opt = document.createElement("option");
     opt.value = String(i);
     opt.textContent = entry.label;
-    pick.appendChild(opt);
-  });
-
-  if (manifest.sets.length) pick.value = String(manifest.sets.length - 1);
-}
-
-function pickDefaultEvent(pick) {
-  const preferred = ["5 km", "5k", "5K", "parkrun"]; // try common variants
-  for (const p of preferred) {
-    const opt = Array.from(pick.options).find(o => o.value === p || o.textContent === p);
-    if (opt) { pick.value = opt.value; return true; }
+    dom.setPick.appendChild(opt);
   }
-  // fallback: first option
-  if (pick.options.length) { pick.value = pick.options[0].value; return true; }
-  return false;
+
+  if (manifest.sets.length) {
+    dom.setPick.value = String(manifest.sets.length - 1); // newest by default
+  }
 }
 
+/**
+ * Picks default event preference (tries 5 km first, otherwise first option)
+ * @param {HTMLSelectElement} selectEl
+ */
+function pickDefaultEvent(selectEl) {
+  const preferred = ["5 km", "5k", "5K", "parkrun"];
+  for (const p of preferred) {
+    const opt = Array.from(selectEl.options).find(
+      (o) => o.value === p || o.textContent === p
+    );
+    if (opt) {
+      selectEl.value = opt.value;
+      return;
+    }
+  }
+
+  if (selectEl.options.length) {
+    selectEl.value = selectEl.options[0].value;
+  }
+}
+
+/**
+ * Populates the Distance/Event list from the selected standards set
+ */
 async function refreshEvents() {
   const entry = getSelectedSetEntry();
-  const sex = el("sexPick").value;
+  const sex = dom.sexPick.value;
 
   const json = await loadStandards(entry, sex);
   const table = getTable(json);
 
-  const pick = el("eventPick");
-  const prev = pick.value;
+  const prev = dom.eventPick.value;
+  dom.eventPick.innerHTML = "";
 
-  pick.innerHTML = "";
   for (const ev of table.events) {
     const opt = document.createElement("option");
     opt.value = ev;
     opt.textContent = ev;
-    pick.appendChild(opt);
+    dom.eventPick.appendChild(opt);
   }
 
-  // Keep previous selection if possible; else default to 5k
-  if (prev && Array.from(pick.options).some(o => o.value === prev)) {
-    pick.value = prev;
+  if (prev && Array.from(dom.eventPick.options).some((o) => o.value === prev)) {
+    dom.eventPick.value = prev;
   } else {
-    pickDefaultEvent(pick);
+    pickDefaultEvent(dom.eventPick);
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/*                                   Compute                                   */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Computes all inputs and required tables for the current UI state
+ */
 async function computeContext() {
   const entry = getSelectedSetEntry();
-  const sex = el("sexPick").value;
+  const sex = dom.sexPick.value;
   const os = otherSex(sex);
 
   const age = getAge();
-  const event = el("eventPick").value;
-  const tSec = parseTimeToSeconds(el("timePick").value);
+  const event = dom.eventPick.value;
+  const tSec = parseTimeToSeconds(dom.timePick.value);
 
   const json = await loadStandards(entry, sex);
   const table = getTable(json);
-  const std = (age != null) ? getStandardSeconds(table, event, age) : null;
+  const std = age != null ? getStandardSeconds(table, event, age) : null;
 
   const jsonM = await loadStandards(entry, "M");
   const jsonF = await loadStandards(entry, "F");
@@ -277,182 +507,187 @@ async function computeContext() {
   const peakM = getPeak(`${entry.year}_M`, tableM);
   const peakF = getPeak(`${entry.year}_F`, tableF);
 
-  return { entry, sex, os, age, event, tSec, table, std, tableM, tableF, peakM, peakF };
+  return { entry, sex, os, age, event, tSec, std, tableM, tableF, peakM, peakF };
 }
 
 async function runLive() {
   updateAgeButtons();
 
-  const resultsEl = el("results");
+  const sex = dom.sexPick.value;
+  const eventNow = dom.eventPick?.value || "";
 
-  const sex = el("sexPick").value;
-  const eventNow = el("eventPick")?.value || "";
-  
   setAgeGradeUI({
-    gradePct: "—",
-    note: "Enter a valid time to calculate.",
     sex,
     event: eventNow,
-    otherGenderTime: "—",
-    peakSameTime: "—",
-    peakOtherTime: "—"
+    gradePct: "—",
+    note: CONFIG.DEFAULT_MESSAGE,
   });
 
   let ctx;
   try {
     ctx = await computeContext();
-  } catch {
+  } catch (err) {
+    showLoadError();
     return;
   }
 
-  const { entry, age, event, tSec, sex: s, os, table, std, tableM, tableF, peakM, peakF } = ctx;
+  const { entry, age, event, tSec, sex: s, os, std, tableM, tableF, peakM, peakF } = ctx;
 
-  if (!isFinite(tSec) || tSec <= 0) {
-    if (!state.activeTarget) resultsEl.innerHTML = "";
+  if (!Number.isFinite(tSec) || tSec <= 0) {
+    if (!state.activeTarget) dom.results.innerHTML = "";
     return;
   }
 
   if (age == null) {
     setAgeGradeUI({
-      gradePct: "—",
-      note: "Enter a valid age to calculate.",
       sex: s,
       event,
-      otherGenderTime: "—",
-      peakSameTime: "—",
-      peakOtherTime: "—"
+      note: "Enter a valid age to calculate.",
     });
-    if (!state.activeTarget) resultsEl.innerHTML = "";
+    if (!state.activeTarget) dom.results.innerHTML = "";
     return;
   }
 
   if (!std) {
     setAgeGradeUI({
-      gradePct: "—",
-      note: "That age/event doesn’t exist in this standards set.",
       sex: s,
       event,
-      otherGenderTime: "—",
-      peakSameTime: "—",
-      peakOtherTime: "—"
+      note: "That age/event doesn’t exist in this standards set.",
     });
-    if (!state.activeTarget) resultsEl.innerHTML = "";
+    if (!state.activeTarget) dom.results.innerHTML = "";
     return;
   }
 
-  const p = std / tSec;
-  const ageGradePct = p * 100;
+  const performanceFactor = std / tSec;
+  const ageGradePct = performanceFactor * 100;
 
-  // headline times for selected event
-  const tableOther = (os === "M") ? tableM : tableF;
-  const peakSame = (s === "M") ? peakM : peakF;
-  const peakOther = (os === "M") ? peakM : peakF;
+  const tableOther = os === "M" ? tableM : tableF;
+  const peakSame = s === "M" ? peakM : peakF;
+  const peakOther = os === "M" ? peakM : peakF;
 
   const otherStdSameAge = getStandardSeconds(tableOther, event, age);
   const peakStdSameSex = peakSame[event];
   const peakStdOtherSex = peakOther[event];
 
   setAgeGradeUI({
-    gradePct: `${ageGradePct.toFixed(2)}%`,
-    note: `${formatInputTime(el("timePick").value)} ${event}, ${sexLabel(s)}, Age ${age}, WMA ${entry.label}`,
     sex: s,
     event,
-    otherGenderTime: otherStdSameAge ? secondsToTime(otherStdSameAge / p) : "—",
-    peakSameTime: peakStdSameSex ? secondsToTime(peakStdSameSex / p) : "—",
-    peakOtherTime: peakStdOtherSex ? secondsToTime(peakStdOtherSex / p) : "—"
+    gradePct: `${ageGradePct.toFixed(2)}%`,
+    note: `${formatInputTime(dom.timePick.value)} ${event}, ${sexLabel(s)}, Age ${age}, WMA ${entry.label}`,
+    otherGenderTime: otherStdSameAge ? secondsToTime(otherStdSameAge / performanceFactor) : "—",
+    peakSameTime: peakStdSameSex ? secondsToTime(peakStdSameSex / performanceFactor) : "—",
+    peakOtherTime: peakStdOtherSex ? secondsToTime(peakStdOtherSex / performanceFactor) : "—",
   });
 
   if (!state.activeTarget) {
-    resultsEl.innerHTML = "";
+    dom.results.innerHTML = "";
     return;
   }
 
-  resultsEl.innerHTML = "";
+  dom.results.innerHTML = "";
 
   if (state.activeTarget === "peakM") {
-    const rows = tableM.events.map(ev => {
+    const rows = tableM.events.map((ev) => {
       const s2 = peakM[ev];
-      return { event: ev, time: s2 ? secondsToTime(s2 / p) : "—" };
+      return { event: ev, time: s2 ? secondsToTime(s2 / performanceFactor) : "—" };
     });
-    resultsEl.appendChild(section("Peak Age Male Equivalents", rows));
+    dom.results.appendChild(buildSection("Peak Age Male Equivalents", rows));
     return;
   }
 
   if (state.activeTarget === "peakF") {
-    const rows = tableF.events.map(ev => {
+    const rows = tableF.events.map((ev) => {
       const s2 = peakF[ev];
-      return { event: ev, time: s2 ? secondsToTime(s2 / p) : "—" };
+      return { event: ev, time: s2 ? secondsToTime(s2 / performanceFactor) : "—" };
     });
-    resultsEl.appendChild(section("Peak Age Female Equivalents", rows));
+    dom.results.appendChild(buildSection("Peak Age Female Equivalents", rows));
     return;
   }
 
   if (state.activeTarget === "ageM") {
-    const rows = tableM.events.map(ev => {
+    const rows = tableM.events.map((ev) => {
       const s2 = getStandardSeconds(tableM, ev, age);
-      return { event: ev, time: s2 ? secondsToTime(s2 / p) : "—" };
+      return { event: ev, time: s2 ? secondsToTime(s2 / performanceFactor) : "—" };
     });
-    resultsEl.appendChild(section(`Age ${age} Male Equivalents`, rows));
+    dom.results.appendChild(buildSection(`Age ${age} Male Equivalents`, rows));
     return;
   }
 
   if (state.activeTarget === "ageF") {
-    const rows = tableF.events.map(ev => {
+    const rows = tableF.events.map((ev) => {
       const s2 = getStandardSeconds(tableF, ev, age);
-      return { event: ev, time: s2 ? secondsToTime(s2 / p) : "—" };
+      return { event: ev, time: s2 ? secondsToTime(s2 / performanceFactor) : "—" };
     });
-    resultsEl.appendChild(section(`Age ${age} Female Equivalents`, rows));
+    dom.results.appendChild(buildSection(`Age ${age} Female Equivalents`, rows));
     return;
   }
 
   if (state.activeTarget === "custom") {
-    const cSex = el("customSex").value;
-    const cAge = clampAge(Number(el("customAge").value));
+    const cSex = dom.customSex.value;
+    const cAge = clampAge(Number(dom.customAge.value));
 
     const jsonC = await loadStandards(entry, cSex);
     const tableC = getTable(jsonC);
 
-    const rows = tableC.events.map(ev => {
-      const s2 = (cAge != null) ? getStandardSeconds(tableC, ev, cAge) : null;
-      return { event: ev, time: s2 ? secondsToTime(s2 / p) : "—" };
+    const rows = tableC.events.map((ev) => {
+      const s2 = cAge != null ? getStandardSeconds(tableC, ev, cAge) : null;
+      return { event: ev, time: s2 ? secondsToTime(s2 / performanceFactor) : "—" };
     });
 
-    resultsEl.appendChild(section(`Custom Target (${sexLabel(cSex)}, age ${cAge ?? "—"})`, rows));
+    dom.results.appendChild(
+      buildSection(`Custom Target (${sexLabel(cSex)}, age ${cAge ?? "—"})`, rows)
+    );
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/*                                   Wiring                                   */
+/* -------------------------------------------------------------------------- */
+
 function wire() {
-  document.querySelectorAll(".targetBtn").forEach(btn => {
+  for (const btn of dom.targetButtons) {
     btn.addEventListener("click", () => {
       const t = btn.dataset.target;
       setActiveTarget(state.activeTarget === t ? null : t);
     });
+  }
+
+  dom.setPick.addEventListener("change", async () => {
+    try {
+      await refreshEvents();
+      scheduleRun(0);
+    } catch {
+      showLoadError();
+    }
   });
 
-  el("setPick").addEventListener("change", async () => {
-    await refreshEvents();
-    scheduleRun(0);
+  dom.sexPick.addEventListener("change", async () => {
+    try {
+      await refreshEvents();
+      scheduleRun(0);
+    } catch {
+      showLoadError();
+    }
   });
 
-  el("sexPick").addEventListener("change", async () => {
-    await refreshEvents();
-    scheduleRun(0);
-  });
+  dom.agePick.addEventListener("input", () => scheduleRun(0));
+  dom.eventPick.addEventListener("change", () => scheduleRun(0));
+  dom.timePick.addEventListener("input", () => scheduleRun(CONFIG.TIME_INPUT_DEBOUNCE_MS));
 
-  el("agePick").addEventListener("input", () => scheduleRun(0));
-  el("eventPick").addEventListener("change", () => scheduleRun(0));
-  el("timePick").addEventListener("input", () => scheduleRun(120));
-
-  el("customSex").addEventListener("change", () => scheduleRun(0));
-  el("customAge").addEventListener("input", () => scheduleRun(0));
+  dom.customSex.addEventListener("change", () => scheduleRun(0));
+  dom.customAge.addEventListener("input", () => scheduleRun(0));
 }
 
 (async function init() {
-  await loadManifest();
-  await refreshSetPick();
-  await refreshEvents();
-  wire();
+  try {
+    await loadManifest();
+    await refreshSetPick();
+    await refreshEvents();
+    wire();
 
-  setActiveTarget(null);
-  scheduleRun(0);
+    setActiveTarget(null);
+    scheduleRun(0);
+  } catch {
+    showLoadError();
+  }
 })();

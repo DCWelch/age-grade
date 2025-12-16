@@ -1,3 +1,9 @@
+/* ==========================================================================
+   Age Grade Converter — styles.css
+   ========================================================================== */
+
+/* ---- Theme tokens -------------------------------------------------------- */
+
 :root {
   --bg: #0b0c10;
   --card: #12141b;
@@ -5,42 +11,77 @@
   --muted: #a7afbd;
   --line: #2a2f3a;
   --accent: #7aa2ff;
-  --rowAlt: rgba(255,255,255,0.03);
+  --rowAlt: rgba(255, 255, 255, 0.03);
+
+  --control-bg: #0e1016;
+
+  --radius-card: 14px;
+  --radius-control: 12px;
+  --radius-pill: 999px;
+
+  --wrap-max: 1100px;
+  --narrow-max: 500px;
+  --inner-max: 700px;
+
+  --space-1: 8px;
+  --space-2: 12px;
+  --space-3: 14px;
+  --space-4: 16px;
+
+  --font-base: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
 }
 
-* { box-sizing: border-box; }
+/* ---- Base / reset -------------------------------------------------------- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  font-family: var(--font-base);
   background: var(--bg);
   color: var(--text);
 }
 
-.wrap { max-width: 1100px; margin: 0 auto; padding: 16px; }
+/* ---- Layout -------------------------------------------------------------- */
+
+.wrap {
+  max-width: var(--wrap-max);
+  margin: 0 auto;
+  padding: var(--space-4);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
+}
+
 h1 {
   margin: 0;
   font-size: 28px;
   text-align: center;
 }
 
-.grid { display: grid; gap: 14px; grid-template-columns: 1fr; }
 .card {
   border: 1px solid var(--line);
   background: var(--card);
-  border-radius: 14px;
-  padding: 14px;
+  border-radius: var(--radius-card);
+  padding: var(--space-3);
 }
 
 .card.narrow {
-  max-width: 500px;
+  max-width: var(--narrow-max);
   width: 100%;
   margin-left: auto;
   margin-right: auto;
 }
 
-h2 { margin: 6px 0 6px; }
+/* ---- Form controls ------------------------------------------------------- */
 
-/* Form sizing: big enough for phones, less wasted space */
 label {
   display: block;
   margin: 10px 0;
@@ -48,40 +89,93 @@ label {
   font-size: 15px;
 }
 
-input, select {
+input,
+select {
   width: 100%;
-  margin-top: 8px;
-  padding: 12px 12px;
-  border-radius: 12px;
+  margin-top: var(--space-1);
+  padding: var(--space-2);
+  border-radius: var(--radius-control);
   border: 1px solid var(--line);
-  background: #0e1016;
+  background: var(--control-bg);
   color: var(--text);
   font-size: 17px;
 }
 
-.row { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
-@media (max-width: 420px) { .row { grid-template-columns: 1fr; } }
+/* Shared small grid used in Custom Target row */
+.row {
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: 1fr 1fr;
+}
 
-/* Age Grade display */
+@media (max-width: 420px) {
+  .row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---- Input grid (Distance/Event, Age, Gender, Time, WMA) ------------------ */
+
+.inputGrid3 {
+  display: grid;
+  gap: var(--space-2);
+  align-items: start;
+
+  max-width: var(--inner-max);
+  margin: 0 auto;
+
+  /* mobile: stack */
+  grid-template-columns: 1fr;
+}
+
+.inputGrid3 .field {
+  margin: 0;
+}
+
+.inputGrid3 label {
+  margin: 0; /* override label default spacing inside the grid */
+}
+
+/* 3 columns when there's room:
+   Row 1: Distance/Event | Age | Gender
+   Row 2: Time | WMA (spans 2 cols)
+*/
+@media (min-width: 500px) {
+  .inputGrid3 {
+    grid-template-columns: 1.6fr 1fr 1fr;
+  }
+
+  .inputGrid3 .field:nth-child(4) {
+    grid-column: 1 / 2; /* Time */
+  }
+
+  .inputGrid3 .field:nth-child(5) {
+    grid-column: 2 / 4; /* WMA spans two columns */
+  }
+}
+
+/* ---- Age Grade block ----------------------------------------------------- */
+
 .ageGradeBox {
   border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 16px;
+  border-radius: var(--radius-card);
+  padding: var(--space-4);
   text-align: center;
-  background: #0e1016;
+  background: var(--control-bg);
+  width: 100%;
 }
 
 .ageGradeValue {
+  margin: 6px 0 8px;
   font-size: 52px;
   font-weight: 900;
   letter-spacing: 0.5px;
   font-variant-numeric: tabular-nums;
-  margin: 6px 0 8px;
 }
 
 .ageGradeSub {
   color: var(--muted);
-  margin-bottom: 12px;
+  margin-bottom: var(--space-2);
   font-size: 15px;
 }
 
@@ -100,149 +194,125 @@ input, select {
   border-top: 1px solid var(--line);
 }
 
-.tripleLabel { color: var(--muted); font-size: 15px; }
+.tripleLabel {
+  color: var(--muted);
+  font-size: 15px;
+}
+
 .tripleValue {
   font-variant-numeric: tabular-nums;
   font-weight: 800;
   font-size: 17px;
 }
 
-/* Target buttons */
-.targetsBar{
+/* ---- Targets (equivalence buttons) -------------------------------------- */
+
+.targetsBar {
   display: grid;
-  gap: 12px;
-  margin: 8px 0 0;
-  max-width: 700px;
-  margin-left: auto;
-  margin-right: auto;
+  gap: var(--space-2);
+  margin: 8px auto 0;
+  max-width: var(--inner-max);
 }
 
-/* Restore button styling */
-.targetBtn{
+/* Pill buttons */
+.targetBtn {
   width: 75%;
-  text-align: center;
   margin-left: auto;
   margin-right: auto;
+  text-align: center;
 
   border: 1px solid var(--line);
-  background: #0e1016;
+  background: var(--control-bg);
   color: var(--text);
+  border-radius: var(--radius-pill);
 
-  padding: 12px 14px;
-  border-radius: 999px;
-
+  padding: var(--space-2) 14px;
   cursor: pointer;
   font-weight: 800;
   font-size: 15px;
 
-  /* helps long labels wrap nicely while staying centered */
   white-space: normal;
   line-height: 1.2;
 }
 
-/* nicer interaction */
-.targetBtn:hover{
-  border-color: rgba(255,255,255,0.18);
+.targetBtn:hover {
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
-.targetBtn:focus-visible{
+.targetBtn:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
-/* keep your active styling (this stays as-is) */
-.targetBtn.is-active{
+.targetBtn.is-active {
   background: var(--accent);
-  color: #0b0c10;
+  color: var(--bg);
   border-color: transparent;
 }
 
-.targetsDivider{
+/* Divider below targets (JS toggles visibility) */
+.targetsDivider {
+  display: none;
   border-top: 1px solid var(--line);
   margin: 12px auto 0;
-  max-width: 700px;
-
-  display: none; /* hidden by default */
+  max-width: var(--inner-max);
 }
 
+/* Custom target row */
 .customRow {
   border-top: 1px solid var(--line);
-  margin-top: 12px;
-  padding-top: 12px;
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
 }
 
-/* Results table */
-.resultSection { margin-top: 14px; }
-.resultSection h3{
+/* ---- Results table ------------------------------------------------------- */
+
+.resultSection {
+  margin-top: var(--space-3);
+}
+
+.resultSection h3 {
   margin: 10px 0;
   font-size: 16px;
   color: var(--muted);
   text-align: center;
 }
 
-/* Results table: 50% width of previous and centered */
-.resultTableWrap{
+.resultTableWrap {
   width: 62.5%;
   max-width: 400px;
   min-width: 275px;
   margin: 0 auto;
 }
 
-/* Table header */
-table { width: 100%; border-collapse: collapse; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
 
-th, td{
+th,
+td {
   padding: 13px 10px;
 }
 
-th:first-child, td:first-child { text-align: left; }
-th:last-child,  td:last-child  { text-align: right; }
+th:first-child,
+td:first-child {
+  text-align: left;
+}
+
+th:last-child,
+td:last-child {
+  text-align: right;
+}
 
 thead th {
   color: var(--muted);
   font-size: 13px;
   font-weight: 800;
-  text-transform: none;
   border-top: 0;
   border-bottom: 1px solid var(--line);
 }
 
-tbody tr:nth-child(even) td { background: var(--rowAlt); }
-
-.inputGrid3{
-  display: grid;
-  gap: 12px;
-  align-items: start;
-
-  /* cap overall input block width */
-  max-width: 700px;
-  margin: 0 auto; /* center inside card */
-
-  /* mobile: stack */
-  grid-template-columns: 1fr;
+tbody tr:nth-child(even) td {
+  background: var(--rowAlt);
 }
-
-.inputGrid3 .field { margin: 0; }
-
-/* 3 columns on any “not tiny” screen */
-@media (min-width: 500px){
-  .inputGrid3{
-    grid-template-columns: 1.6fr 1fr 1fr; /* Distance/Event wider than Age/Gender */
-  }
-
-  /* place Time + WMA on second row */
-  .inputGrid3 .field:nth-child(4){
-    grid-column: 1 / 2; /* Time */
-  }
-  .inputGrid3 .field:nth-child(5){
-    grid-column: 2 / 4; /* WMA spans two columns */
-  }
-}
-
-/* keep controls filling their cell */
-.inputGrid3 input,
-.inputGrid3 select{
-  width: 100%;
-}
-
-.inputGrid3 label { margin: 0; }
