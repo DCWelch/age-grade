@@ -28,6 +28,12 @@ function secondsToTime(sec) {
   return hh > 0 ? `${hh}:${mmStr}:${ssStr}` : `${mmStr}:${ssStr}`;
 }
 
+function formatInputTime(raw) {
+  const sec = parseTimeToSeconds(raw);
+  if (!isFinite(sec) || sec <= 0) return "—";
+  return secondsToTime(sec);
+}
+
 async function loadManifest() {
   if (state.manifest) return state.manifest;
   const res = await fetch("age_grade_standards/manifest.json");
@@ -188,6 +194,12 @@ function setActiveTarget(targetOrNull) {
 
   el("customRow").hidden = (state.activeTarget !== "custom");
 
+  /* ✅ show divider only when a target is active */
+  const divider = document.querySelector(".targetsDivider");
+  if (divider) {
+    divider.style.display = state.activeTarget ? "block" : "none";
+  }
+
   if (!state.activeTarget) el("results").innerHTML = "";
   scheduleRun(0);
 }
@@ -342,7 +354,7 @@ async function runLive() {
 
   setAgeGradeUI({
     gradePct: `${ageGradePct.toFixed(2)}%`,
-    note: `${event} — ${sexLabel(s)}, age ${age}, WMA ${entry.label}`,
+    note: `${formatInputTime(el("timePick").value)} ${event}, ${sexLabel(s)}, Age ${age}, WMA ${entry.label}`,
     sex: s,
     event,
     otherGenderTime: otherStdSameAge ? secondsToTime(otherStdSameAge / p) : "—",
