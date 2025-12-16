@@ -2,7 +2,7 @@
 
 Web-based tool to calculate an Age Grade and Age Grade-equivelant times given a distance, time, age, and gender.
 
-## Live at:
+## Live at
 
 https://dcwelch.io/age-grade
 
