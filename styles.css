@@ -337,6 +337,14 @@ tbody tr:nth-child(even) td {
   outline-offset: 2px;
 }
 
+.introText {
+  margin: 7px 0 2px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.4;
+}
+
 /* ---- Info modal + frosted overlay -------------------------------------- */
 
 .infoOverlay {
