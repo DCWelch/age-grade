@@ -1,0 +1,8 @@
+{
+  "sets": [
+    { "label": "2010", "year": 2010, "base": "age_grade_standards/2010", "male": "MaleRoadStd2010.json", "female": "FemaleRoadStd2010.json" },
+    { "label": "2015", "year": 2015, "base": "age_grade_standards/2015", "male": "MaleRoadStd2015.json", "female": "FemaleRoadStd2015.json" },
+    { "label": "2020", "year": 2020, "base": "age_grade_standards/2020", "male": "MaleRoadStd2020.json", "female": "FemaleRoadStd2020.json" },
+    { "label": "2025", "year": 2025, "base": "age_grade_standards/2025", "male": "MaleRoadStd2025.json", "female": "FemaleRoadStd2025.json" }
+  ]
+}

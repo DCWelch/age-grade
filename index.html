@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Age Grade Converter</title>
+  <meta name="description" content="Web-based tool to show age grades and age-grade-conversions of road running times for common distances">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="wrap">
+    <h1>Age Grade Converter</h1>
+  </header>
+
+  <main class="wrap grid">
+    <section class="card">
+    
+      <div class="inputGrid3">
+        <label class="field">
+          Distance / Event
+          <select id="eventPick"></select>
+        </label>
+      
+        <label class="field">
+          Age
+          <input id="agePick" inputmode="numeric" pattern="[0-9]*" value="30" />
+        </label>
+      
+        <label class="field">
+          Gender
+          <select id="sexPick">
+            <option value="M">Male</option>
+            <option value="F">Female</option>
+          </select>
+        </label>
+      
+        <label class="field">
+          Time
+          <input id="timePick" type="text" value="20:00" />
+        </label>
+      
+        <label class="field">
+          WMA Standards
+          <select id="setPick"></select>
+        </label>
+      </div>
+
+    </section>
+
+    <section class="card">
+
+      <div class="ageGradeBox">
+	    <div class="ageGradeSub" id="ageGradeTitle">Age Grade</div>
+        <div class="ageGradeValue" id="ageGradeOut">—</div>
+        <div class="ageGradeSub" id="ageGradeNote">Enter a valid time to calculate.</div>
+
+        <div class="ageGradeTriples">
+          <div class="tripleRow">
+            <div class="tripleLabel" id="otherGenderLabel">Other Gender Equivalent Time</div>
+            <div class="tripleValue" id="otherGenderTime">—</div>
+          </div>
+          <div class="tripleRow">
+            <div class="tripleLabel" id="peakTimeLabel">Peak Age Time</div>
+            <div class="tripleValue" id="peakTime">—</div>
+          </div>
+          <div class="tripleRow">
+            <div class="tripleLabel" id="peakOtherGenderLabel">Peak Age Other Gender Time</div>
+            <div class="tripleValue" id="peakOtherGenderTime">—</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card wide">
+    
+      <div class="targetsBar" role="tablist" aria-label="Targets">
+        <button class="targetBtn" id="btnPeakM" data-target="peakM" type="button">Peak Age Male Equivalents</button>
+        <button class="targetBtn" id="btnPeakF" data-target="peakF" type="button">Peak Age Female Equivalents</button>
+        <button class="targetBtn" id="btnAgeM" data-target="ageM" type="button">Age <span id="ageLabelM">30</span> Male Equivalents</button>
+        <button class="targetBtn" id="btnAgeF" data-target="ageF" type="button">Age <span id="ageLabelF">30</span> Female Equivalents</button>
+        <button class="targetBtn" id="btnCustom" data-target="custom" type="button">Custom Target</button>
+      </div>
+    
+      <div class="customRow" id="customRow" hidden>
+        <div class="row">
+          <label>
+            Target gender
+            <select id="customSex">
+              <option value="M">Male</option>
+              <option value="F">Female</option>
+            </select>
+          </label>
+          <label>
+            Target age
+            <input id="customAge" type="number" min="5" max="110" value="30" />
+          </label>
+        </div>
+      </div>
+    
+      <div id="results"></div>
+    </section>
+
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,199 @@
+:root {
+  --bg: #0b0c10;
+  --card: #12141b;
+  --text: #e9ecf1;
+  --muted: #a7afbd;
+  --line: #2a2f3a;
+  --accent: #7aa2ff;
+  --rowAlt: rgba(255,255,255,0.03);
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.wrap { max-width: 1100px; margin: 0 auto; padding: 16px; }
+h1 { margin: 0; font-size: 28px; }
+
+.grid { display: grid; gap: 14px; grid-template-columns: 1fr; }
+.card {
+  border: 1px solid var(--line);
+  background: var(--card);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+h2 { margin: 6px 0 6px; }
+
+/* Form sizing: big enough for phones, less wasted space */
+label {
+  display: block;
+  margin: 10px 0;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+input, select {
+  width: 100%;
+  margin-top: 8px;
+  padding: 12px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: #0e1016;
+  color: var(--text);
+  font-size: 17px;
+}
+
+.row { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
+@media (max-width: 420px) { .row { grid-template-columns: 1fr; } }
+
+/* Age Grade display */
+.ageGradeBox {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px;
+  text-align: center;
+  background: #0e1016;
+}
+
+.ageGradeValue {
+  font-size: 52px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  font-variant-numeric: tabular-nums;
+  margin: 6px 0 8px;
+}
+
+.ageGradeSub {
+  color: var(--muted);
+  margin-bottom: 12px;
+  font-size: 15px;
+}
+
+.ageGradeTriples {
+  display: grid;
+  gap: 10px;
+  text-align: left;
+}
+
+.tripleRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: baseline;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.tripleLabel { color: var(--muted); font-size: 15px; }
+.tripleValue {
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  font-size: 17px;
+}
+
+/* Target buttons */
+.targetsBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 8px 0 10px;
+}
+
+.targetBtn {
+  border: 1px solid var(--line);
+  background: #0e1016;
+  color: var(--text);
+  padding: 12px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 800;
+  font-size: 15px;
+  white-space: nowrap;
+}
+
+.targetBtn.is-active {
+  background: var(--accent);
+  color: #0b0c10;
+  border-color: transparent;
+}
+
+.customRow {
+  border-top: 1px solid var(--line);
+  margin-top: 12px;
+  padding-top: 12px;
+}
+
+/* Results table */
+.resultSection { margin-top: 14px; }
+.resultSection h3 { margin: 10px 0; font-size: 16px; color: var(--muted); }
+
+/* Results table: 50% width of previous and centered */
+.resultTableWrap{
+  max-width: 360px;     /* was 720px */
+  margin: 0 auto;       /* center horizontally */
+}
+
+/* Table header */
+table { width: 100%; border-collapse: collapse; }
+
+th, td {
+  padding: 10px 8px;
+  border-top: 1px solid var(--line);
+}
+
+thead th {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: none;
+  border-top: 0;
+  border-bottom: 1px solid var(--line);
+}
+
+th:first-child, td:first-child { text-align: left; color: var(--muted); }
+th:last-child,  td:last-child  { text-align: right; font-variant-numeric: tabular-nums; font-weight: 800; }
+
+tbody tr:nth-child(even) td { background: var(--rowAlt); }
+
+.inputGrid3{
+  display: grid;
+  gap: 12px;
+  align-items: start;
+
+  /* cap overall input block width */
+  max-width: 700px;
+  margin: 0 auto; /* center inside card */
+
+  /* mobile: stack */
+  grid-template-columns: 1fr;
+}
+
+.inputGrid3 .field { margin: 0; }
+
+/* 3 columns on any “not tiny” screen */
+@media (min-width: 500px){
+  .inputGrid3{
+    grid-template-columns: 1.6fr 1fr 1fr; /* Distance/Event wider than Age/Gender */
+  }
+
+  /* place Time + WMA on second row */
+  .inputGrid3 .field:nth-child(4){
+    grid-column: 1 / 2; /* Time */
+  }
+  .inputGrid3 .field:nth-child(5){
+    grid-column: 2 / 4; /* WMA spans two columns */
+  }
+}
+
+/* keep controls filling their cell */
+.inputGrid3 input,
+.inputGrid3 select{
+  width: 100%;
+}
+
+.inputGrid3 label { margin: 0; }
