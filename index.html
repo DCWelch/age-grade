@@ -93,16 +93,23 @@
 
     <!-- Performance Equivalents -->
     <section class="card narrow">
-      <div class="targetsBar" role="tablist" aria-label="Targets">
-        <button class="targetBtn" id="btnPeakM" data-target="peakM" type="button">Peak Age Male Equivalents</button>
-        <button class="targetBtn" id="btnPeakF" data-target="peakF" type="button">Peak Age Female Equivalents</button>
-        <button class="targetBtn" id="btnAgeM" data-target="ageM" type="button">Age <span id="ageLabelM">30</span> Male Equivalents</button>
-        <button class="targetBtn" id="btnAgeF" data-target="ageF" type="button">Age <span id="ageLabelF">30</span> Female Equivalents</button>
-        <button class="targetBtn" id="btnCustom" data-target="custom" type="button">Custom Target</button>
+      <h3 class="targetsHeader">Generate Equivalence Tables</h3>
+    
+      <div class="targetsControls">
+        <label class="field targetsField">
+          <select id="equivPick">
+            <option value="" selected>Select conversion table to generate</option>
+            <option value="peakM">Peak Age Male Equivalents</option>
+            <option value="peakF">Peak Age Female Equivalents</option>
+            <option value="ageM">Age 30 Male Equivalents</option>
+            <option value="ageF">Age 30 Female Equivalents</option>
+            <option value="custom">Custom Target</option>
+          </select>
+        </label>
       </div>
-
+    
       <div class="targetsDivider"></div>
-
+    
       <div class="customRow" id="customRow" hidden>
         <div class="row">
           <label>
@@ -112,14 +119,14 @@
               <option value="F">Female</option>
             </select>
           </label>
-
+    
           <label>
             Target age
             <input id="customAge" type="number" min="5" max="110" value="30" />
           </label>
         </div>
       </div>
-
+    
       <div id="results"></div>
     </section>
   </main>

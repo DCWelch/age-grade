@@ -52,7 +52,7 @@ const dom = {
   customAge: $("customAge"),
 
   targetsDivider: document.querySelector(".targetsDivider"),
-  targetButtons: Array.from(document.querySelectorAll(".targetBtn")),
+  equivPick: $("equivPick"),
 };
 
 const state = {
@@ -124,8 +124,16 @@ function showLoadError(msg = CONFIG.LOAD_ERROR_MESSAGE) {
  */
 function updateAgeButtons() {
   const age = String(dom.agePick.value ?? "").trim() || "—";
+
   if (dom.ageLabelM) dom.ageLabelM.textContent = age;
   if (dom.ageLabelF) dom.ageLabelF.textContent = age;
+
+  if (dom.equivPick) {
+    const optAgeM = dom.equivPick.querySelector('option[value="ageM"]');
+    const optAgeF = dom.equivPick.querySelector('option[value="ageF"]');
+    if (optAgeM) optAgeM.textContent = `Age ${age} Male Equivalents`;
+    if (optAgeF) optAgeF.textContent = `Age ${age} Female Equivalents`;
+  }
 }
 
 /**
@@ -136,19 +144,18 @@ function updateAgeButtons() {
 function setActiveTarget(targetOrNull) {
   state.activeTarget = targetOrNull;
 
-  for (const btn of dom.targetButtons) {
-    const t = btn.dataset.target;
-    const active = t === state.activeTarget;
-    btn.classList.toggle("is-active", active);
-    btn.setAttribute("aria-pressed", active ? "true" : "false");
+  if (dom.equivPick) {
+    dom.equivPick.value = state.activeTarget ?? "";
   }
 
   if (dom.customRow) dom.customRow.hidden = state.activeTarget !== "custom";
+
   if (dom.targetsDivider) {
     dom.targetsDivider.style.display = state.activeTarget ? "block" : "none";
   }
 
   if (!state.activeTarget && dom.results) dom.results.innerHTML = "";
+
   scheduleRun(0);
 }
 
@@ -670,12 +677,10 @@ async function runLive() {
 /* -------------------------------------------------------------------------- */
 
 function wire() {
-  for (const btn of dom.targetButtons) {
-    btn.addEventListener("click", () => {
-      const t = btn.dataset.target;
-      setActiveTarget(state.activeTarget === t ? null : t);
-    });
-  }
+  dom.equivPick.addEventListener("change", () => {
+    const v = dom.equivPick.value || null;
+    setActiveTarget(v);
+  });
 
   dom.setPick.addEventListener("change", async () => {
     try {
